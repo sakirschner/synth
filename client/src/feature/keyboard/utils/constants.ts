@@ -1,7 +1,7 @@
 export const WHITE_KEY_WIDTH = 3;
 export const BLACK_KEY_WIDTH = 1.5;
 
-export const NOTES = {
+export const NOTES: Record<string, string> = {
   a: 'C',
   w: 'C#',
   s: 'D',

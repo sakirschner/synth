@@ -1,22 +1,44 @@
 import { Box, Text } from '@mantine/core';
-import { CSSProperties, useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { BLACK_KEY_WIDTH, NOTES, WHITE_KEY_WIDTH } from '../utils/constants';
 import { useKeyboardListener } from '../hooks/useKeyboardListener';
 import { getIsSharp } from '../utils/getIsSharp';
+import { getKeyStyle } from '../utils/getKeyStyle';
+import { SynthContext } from '../../synth/state/SynthContextProvider';
+
+const octave = 4;
 
 export default function Keys() {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const positionRef = useRef(0);
 
-  const onKeyDown = useCallback((event: KeyboardEvent) => {
-    setActiveKeys((activeKeys) => [...activeKeys, event.key]);
-  }, []);
+  const { synth } = useContext(SynthContext);
 
-  const onKeyUp = useCallback((event: KeyboardEvent) => {
-    setActiveKeys((activeKeys) =>
-      activeKeys.filter((key) => key !== event.key)
-    );
-  }, []);
+  const onKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      const key = event.key;
+      const note = NOTES[key];
+      if (note && synth && !activeKeys.includes(key)) {
+        setActiveKeys((activeKeys) => [...activeKeys, event.key]);
+        synth.triggerAttack(`${note}${octave}`);
+      }
+    },
+    [activeKeys, synth]
+  );
+
+  const onKeyUp = useCallback(
+    (event: KeyboardEvent) => {
+      const key = event.key;
+      const note = NOTES[key];
+      if (note && synth) {
+        setActiveKeys((activeKeys) =>
+          activeKeys.filter((activeKey) => activeKey !== key)
+        );
+        synth.triggerRelease(`${note}${octave}`);
+      }
+    },
+    [synth]
+  );
 
   useKeyboardListener({ eventName: 'keydown', handler: onKeyDown });
   useKeyboardListener({ eventName: 'keyup', handler: onKeyUp });
@@ -25,7 +47,7 @@ export default function Keys() {
     ([key, note]: [key: string, note: string]) => {
       const isSharp = getIsSharp(note);
       const keyWidth = isSharp ? BLACK_KEY_WIDTH : WHITE_KEY_WIDTH;
-      const isActive = activeKeys[0] === key;
+      const isActive = activeKeys.includes(key);
 
       let left = positionRef.current;
 
@@ -35,21 +57,11 @@ export default function Keys() {
         positionRef.current += keyWidth;
       }
 
-      const style: CSSProperties = {
-        width: `${keyWidth}em`,
-        height: isSharp ? '120px' : '200px',
-        border: '1px solid black',
-        position: 'absolute',
-        left: `${left}em`,
-        zIndex: isSharp ? 1 : 0,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'flex-end',
-        backgroundColor: isActive ? 'yellow' : isSharp ? 'black' : 'white',
-      };
-
       return (
-        <Box key={`${key}-${note}`} style={style}>
+        <Box
+          key={`${key}-${note}`}
+          style={getKeyStyle({ isActive, isSharp, keyWidth, left })}
+        >
           <Text
             style={{ color: isSharp ? 'white' : 'black' }}
             mb={isSharp ? 0 : '2em'}

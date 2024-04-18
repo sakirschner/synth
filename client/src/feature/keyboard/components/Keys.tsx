@@ -6,8 +6,6 @@ import { getIsSharp } from '../utils/getIsSharp';
 import { getKeyStyle } from '../utils/getKeyStyle';
 import { SynthContext } from '../../synth/state/SynthContextProvider';
 
-const octave = 4;
-
 export default function Keys() {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const positionRef = useRef(0);
@@ -20,7 +18,7 @@ export default function Keys() {
       const note = NOTES[key];
       if (note && synth && !activeKeys.includes(key)) {
         setActiveKeys((activeKeys) => [...activeKeys, event.key]);
-        synth.triggerAttack(`${note}${octave}`);
+        synth.triggerAttack(note);
       }
     },
     [activeKeys, synth]
@@ -34,7 +32,7 @@ export default function Keys() {
         setActiveKeys((activeKeys) =>
           activeKeys.filter((activeKey) => activeKey !== key)
         );
-        synth.triggerRelease(`${note}${octave}`);
+        synth.triggerRelease(note);
       }
     },
     [synth]
@@ -50,7 +48,6 @@ export default function Keys() {
       const isActive = activeKeys.includes(key);
 
       let left = positionRef.current;
-
       if (isSharp) {
         left -= (WHITE_KEY_WIDTH - keyWidth) / 2;
       } else {

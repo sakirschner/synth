@@ -17,10 +17,13 @@ export function SynthContextProvider({ children }: { children: ReactNode }) {
   }, []);
 
   synth.maxPolyphony = 6;
+  synth.set({ oscillator: { type: 'square' } });
 
   const synthContextValue: ISynthContext = {
     synth,
   };
+
+  // console.log(synth.get());
 
   return (
     <SynthContext.Provider value={synthContextValue}>

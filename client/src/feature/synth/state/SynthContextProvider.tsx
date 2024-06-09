@@ -17,7 +17,7 @@ export function SynthContextProvider({ children }: { children: ReactNode }) {
   }, []);
 
   synth.maxPolyphony = 6;
-  synth.set({ oscillator: { type: 'square' } });
+  synth.set({ oscillator: { type: 'sine' } });
 
   const synthContextValue: ISynthContext = {
     synth,

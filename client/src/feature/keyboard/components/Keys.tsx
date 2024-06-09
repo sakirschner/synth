@@ -1,27 +1,43 @@
-import { Box, Text } from '@mantine/core';
+import { Box } from '@mantine/core';
 import { useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { BLACK_KEY_WIDTH, NOTES, WHITE_KEY_WIDTH } from '../utils/constants';
 import { useKeyboardListener } from '../hooks/useKeyboardListener';
-import { getIsSharp } from '../utils/getIsSharp';
-import { getKeyStyle } from '../utils/getKeyStyle';
 import { SynthContext } from '../../synth/state/SynthContextProvider';
+import Key from './Key';
+import { getIsSharp } from '../utils/getIsSharp';
 
 export default function Keys() {
-  const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const { synth } = useContext(SynthContext);
   const positionRef = useRef(0);
 
-  const { synth } = useContext(SynthContext);
+  const [activeNotes, setActiveNotes] = useState<string[]>([]);
+
+  const keyPositions = useMemo(() => {
+    positionRef.current = 0;
+    const positions: number[] = [];
+    Object.entries(NOTES).forEach(([, note]) => {
+      const isSharp = getIsSharp(note);
+      const keyWidth = isSharp ? BLACK_KEY_WIDTH : WHITE_KEY_WIDTH;
+      if (isSharp) {
+        positions.push(positionRef.current - (WHITE_KEY_WIDTH - keyWidth) / 2);
+      } else {
+        positions.push(positionRef.current);
+        positionRef.current += keyWidth;
+      }
+    });
+    return positions;
+  }, []);
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
       const key = event.key;
       const note = NOTES[key];
-      if (note && synth && !activeKeys.includes(key)) {
-        setActiveKeys((activeKeys) => [...activeKeys, event.key]);
+      if (note && synth && !activeNotes.includes(note)) {
+        setActiveNotes((prev) => [...prev, note]);
         synth.triggerAttack(note);
       }
     },
-    [activeKeys, synth]
+    [activeNotes, synth]
   );
 
   const onKeyUp = useCallback(
@@ -29,8 +45,8 @@ export default function Keys() {
       const key = event.key;
       const note = NOTES[key];
       if (note && synth) {
-        setActiveKeys((activeKeys) =>
-          activeKeys.filter((activeKey) => activeKey !== key)
+        setActiveNotes((prev) =>
+          prev.filter((activeNote) => activeNote !== note)
         );
         synth.triggerRelease(note);
       }
@@ -41,42 +57,44 @@ export default function Keys() {
   useKeyboardListener({ eventName: 'keydown', handler: onKeyDown });
   useKeyboardListener({ eventName: 'keyup', handler: onKeyUp });
 
-  const renderKey = useCallback(
-    ([key, note]: [key: string, note: string]) => {
-      const isSharp = getIsSharp(note);
-      const keyWidth = isSharp ? BLACK_KEY_WIDTH : WHITE_KEY_WIDTH;
-      const isActive = activeKeys.includes(key);
-
-      let left = positionRef.current;
-      if (isSharp) {
-        left -= (WHITE_KEY_WIDTH - keyWidth) / 2;
-      } else {
-        positionRef.current += keyWidth;
-      }
-
-      return (
-        <Box
-          key={`${key}-${note}`}
-          style={getKeyStyle({ isActive, isSharp, keyWidth, left })}
-        >
-          <Text
-            style={{ color: isSharp ? 'white' : 'black' }}
-            mb={isSharp ? 0 : '2em'}
-          >
-            {key}
-          </Text>
-        </Box>
-      );
+  const getIsActive = useCallback(
+    (note: string) => {
+      return activeNotes.includes(note);
     },
-    [activeKeys]
+    [activeNotes]
   );
 
-  const keyboard = useMemo(() => {
-    positionRef.current = 0;
-    return Object.entries(NOTES).map(renderKey);
-  }, [renderKey]);
+  const handleClickKey = useCallback(
+    (note: string) => {
+      if (getIsActive(note)) {
+        setActiveNotes((prev) =>
+          prev.filter((activeNote) => activeNote !== note)
+        );
+        synth?.triggerRelease(note);
+      } else {
+        setActiveNotes((prev) => [...prev, note]);
+        synth?.triggerAttack(note);
+      }
+    },
+    [getIsActive, synth]
+  );
 
   return (
-    <Box style={{ display: 'flex', position: 'relative' }}>{keyboard}</Box>
+    <Box
+      style={{
+        display: 'flex',
+        position: 'relative',
+      }}
+    >
+      {Object.entries(NOTES).map(([keyboardKey, note], index) => (
+        <Key
+          keyboardKey={keyboardKey}
+          note={note}
+          isActive={getIsActive(note)}
+          onClick={handleClickKey}
+          position={keyPositions[index]}
+        />
+      ))}
+    </Box>
   );
 }
